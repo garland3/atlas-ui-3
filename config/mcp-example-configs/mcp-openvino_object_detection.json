@@ -1,0 +1,17 @@
+{
+  "openvino_object_detection": {
+    "command": [
+      "python",
+      "mcp/openvino_object_detection/main.py"
+    ],
+    "cwd": "backend",
+    "groups": [
+      "users"
+    ],
+    "description": "Perform object detection on images using YOLOv11 models optimized with Intel OpenVINO. Detects 80 object classes (people, vehicles, animals, etc.) and returns bounding boxes, confidence scores, and annotated overlay images.",
+    "author": "Chat UI Team",
+    "short_description": "OpenVINO YOLOv11 object detection",
+    "help_email": "support@chatui.example.com",
+    "compliance_level": "Public"
+  }
+}
