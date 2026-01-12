@@ -1,0 +1,49 @@
+# Example values for development environment
+replicaCount: 1
+
+image:
+  repository: openvino-detection
+  pullPolicy: IfNotPresent
+  tag: "latest"
+  baseImage: "ubuntu"
+
+service:
+  type: NodePort
+  port: 8006
+  nodePort: 30006
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+autoscaling:
+  enabled: false
+
+persistence:
+  enabled: false
+
+# Development-friendly probe settings
+livenessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 30
+  periodSeconds: 20
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

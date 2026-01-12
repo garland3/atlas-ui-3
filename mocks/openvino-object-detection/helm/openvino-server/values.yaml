@@ -1,0 +1,180 @@
+# Default values for openvino-server Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Number of replicas for the OpenVINO server deployment
+replicaCount: 1
+
+image:
+  # Image repository - replace with your container registry
+  repository: openvino-detection
+  # Image pull policy
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion
+  tag: "latest"
+  # Base image to use (ubuntu or rhel)
+  baseImage: "ubuntu"
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Override the name of the chart
+nameOverride: ""
+# Override the full name of the chart
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use
+  name: ""
+
+# Annotations to add to the pod
+podAnnotations: {}
+
+# Security context for the pod
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Security context for the container
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+service:
+  # Service type (ClusterIP, NodePort, LoadBalancer)
+  type: ClusterIP
+  # Service port
+  port: 8006
+  # Target port on the container
+  targetPort: 8006
+  # NodePort (only used if type is NodePort)
+  # nodePort: 30006
+
+ingress:
+  # Enable ingress
+  enabled: false
+  # Ingress class name
+  className: "nginx"
+  # Ingress annotations
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # Ingress hosts configuration
+  hosts:
+    - host: openvino.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # TLS configuration
+  tls: []
+  #  - secretName: openvino-server-tls
+  #    hosts:
+  #      - openvino.local
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector for pod assignment
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity for pod assignment
+affinity: {}
+
+# Environment variables
+env:
+  # Python unbuffered mode
+  PYTHONUNBUFFERED: "1"
+
+# Additional environment variables from secrets or configmaps
+envFrom: []
+# - secretRef:
+#     name: openvino-secrets
+# - configMapRef:
+#     name: openvino-config
+
+# ConfigMap data (optional)
+configMap:
+  enabled: false
+  data: {}
+
+# Secret data (optional) - base64 encoded values
+secret:
+  enabled: false
+  data: {}
+
+# Persistence configuration for model cache
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  storageClass: ""
+  mountPath: /tmp/openvino_models
+  # existingClaim: ""
+
+# Service monitor for Prometheus (optional)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Network policy
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress: []

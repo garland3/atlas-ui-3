@@ -152,6 +152,60 @@ export MY_API_KEY="your-secret-api-key"
 
 You can restrict access to MCP servers based on user groups. This is a critical feature for controlling which users can access powerful or sensitive tools. If a user is not in the required group, the server will be completely invisible to them in the UI, and any attempt to call its functions will be blocked.
 
+## Example MCP Servers
+
+### OpenVINO Object Detection Server
+
+The OpenVINO Object Detection server provides AI-powered object detection using YOLOv11 models optimized with Intel OpenVINO. This server runs as an external HTTP service and can be deployed using Docker, Docker Compose, or Kubernetes.
+
+**Location**: `mocks/openvino-object-detection/`
+
+**Key Features**:
+- YOLOv11 object detection with multiple model sizes (nano to extra-large)
+- Intel OpenVINO optimization for efficient CPU/GPU inference
+- Detects 80 COCO object classes (people, vehicles, animals, etc.)
+- Returns bounding boxes, confidence scores, and annotated images
+- HTTP transport for external service deployment
+
+**Configuration Example**:
+```json
+{
+  "openvino-object-detection": {
+    "enabled": true,
+    "url": "http://127.0.0.1:8006/mcp",
+    "transport": "http",
+    "groups": ["users"],
+    "description": "Perform object detection on images using YOLOv11 models optimized with Intel OpenVINO",
+    "author": "Chat UI Team",
+    "short_description": "OpenVINO YOLOv11 object detection (HTTP)",
+    "help_email": "support@chatui.example.com",
+    "compliance_level": "Public"
+  }
+}
+```
+
+**Deployment Options**:
+1. **Local Python**: `cd mocks/openvino-object-detection && python main.py`
+2. **Docker**: `docker-compose up -d` (see `mocks/openvino-object-detection/docker-compose.yml`)
+3. **Kubernetes**: Helm chart available in `mocks/openvino-object-detection/helm/openvino-server/`
+
+**Documentation**:
+- Quick Start: `mocks/openvino-object-detection/QUICKSTART.md`
+- Docker/K8s Deployment: `mocks/openvino-object-detection/DOCKER_K8S_DEPLOYMENT.md`
+- Build Notes: `mocks/openvino-object-detection/BUILD_NOTES.md`
+
+**Available Tools**:
+- `detect_objects`: Detect objects in an image file
+- `detect_objects_base64`: Detect objects in base64-encoded images
+- `list_available_models`: Get information about available YOLO models
+- `get_class_labels`: Get list of detectable object classes
+
+**Performance Considerations**:
+- First run downloads models (~10-50MB depending on variant)
+- Use persistent volumes in production to cache models
+- Smaller models (yolo11n) for real-time, larger (yolo11x) for accuracy
+- Supports GPU acceleration with OpenVINO GPU plugin
+
 ## A Note on the `username` Argument
 
 As a security measure, if a tool is designed to accept a `username` argument, the Atlas UI backend will **always** overwrite this argument with the authenticated user's identity before calling the tool. This ensures that a tool always runs with the correct user context and prevents the LLM from impersonating another user.

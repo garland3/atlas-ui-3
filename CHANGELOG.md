@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### PR #TBD - 2026-01-12
+- **OpenVINO MCP Server**: Complete OpenVINO object detection HTTP MCP server setup with comprehensive deployment infrastructure. Added Dockerfiles (Ubuntu and RHEL), docker-compose.yml, Helm charts for Kubernetes, build scripts, and detailed documentation (QUICKSTART.md, DOCKER_K8S_DEPLOYMENT.md, BUILD_NOTES.md).
+
 ### PR #203 - 2026-01-10
 - **Admin Panel**: Add User Feedback viewer card to admin dashboard with statistics display (positive/neutral/negative counts)
 - **Admin Panel**: Add feedback download functionality supporting CSV and JSON export formats
