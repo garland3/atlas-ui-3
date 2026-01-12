@@ -1,7 +1,42 @@
-# Ubuntu-based Dockerfile for OpenVINO Object Detection MCP Server
-# This Dockerfile creates a containerized MCP server for YOLOv11 object detection with OpenVINO
+# Multi-stage Ubuntu-based Dockerfile for OpenVINO Object Detection MCP Server
+# This Dockerfile uses multi-stage builds to significantly reduce final image size
+# by excluding build tools and unnecessary dependencies from the runtime image.
 
-FROM ubuntu:24.04
+# Build stage - includes all build dependencies
+FROM ubuntu:24.04 AS builder
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies (gcc, g++, etc. needed for compiling Python packages)
+RUN apt-get update && \
+    apt-get install -y \
+        python3 \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        gcc \
+        g++ \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first for better layer caching
+COPY requirements.txt .
+
+# Create virtual environment and install dependencies
+# Use --no-cache-dir to reduce size and compile with optimizations
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /app/venv/bin/pip install --no-cache-dir -r requirements.txt && \
+    find /app/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/venv -type f -name "*.pyc" -delete && \
+    find /app/venv -type f -name "*.pyo" -delete
+
+# Runtime stage - minimal runtime dependencies only
+FROM ubuntu:24.04 AS runtime
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,12 +47,10 @@ WORKDIR /app
 # Create non-root user
 RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser
 
-# Install system dependencies
+# Install only runtime dependencies (no build tools)
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
         python3 \
-        python3-pip \
-        python3-venv \
         curl \
         ca-certificates \
         libgl1 \
@@ -26,15 +59,12 @@ RUN apt-get update && \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Copy virtual environment from builder
+COPY --from=builder /app/venv /app/venv
+
 # Copy application files
 COPY main.py .
-COPY requirements.txt .
 COPY README.md .
-
-# Create virtual environment and install dependencies as root first
-RUN python3 -m venv /app/venv && \
-    /app/venv/bin/pip install --no-cache-dir --upgrade pip && \
-    /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Create directory for model cache
 RUN mkdir -p /tmp/openvino_models && \
@@ -49,12 +79,10 @@ USER mcpuser
 # Set up Python environment
 ENV VIRTUAL_ENV=/app/venv
 ENV PATH="/app/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 
 # Expose the MCP server port
 EXPOSE 8006
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
