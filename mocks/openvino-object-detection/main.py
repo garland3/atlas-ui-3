@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-OpenVINO Object Detection MCP Server using FastMCP
+OpenVINO Object Detection MCP Server (HTTP Transport)
 
 Provides YOLOv11 object detection with OpenVINO optimization through MCP protocol.
-Takes an input image file, performs object detection, and returns:
+This version runs as an HTTP server for external service deployment.
+
+Takes an input image file or base64 data, performs object detection, and returns:
 - Detection results in structured format
 - Overlay image with detected objects visualized
 """
 
+import argparse
 import base64
 import io
 import json
@@ -20,9 +23,6 @@ from typing import Any, Dict, List, Optional, Union
 import cv2
 import numpy as np
 from fastmcp import FastMCP
-
-# Initialize the MCP server
-mcp = FastMCP("OpenVINO Object Detection")
 
 # Global model cache
 _model_cache = {}
@@ -50,6 +50,17 @@ COLORS = [
     (128, 0, 128), (0, 128, 128), (255, 128, 0), (255, 0, 128), (128, 255, 0),
     (0, 255, 128), (128, 0, 255), (0, 128, 255), (255, 128, 128), (128, 255, 128)
 ]
+
+# Initialize FastMCP server
+mcp = FastMCP(
+    name="OpenVINO Object Detection",
+    instructions="""
+    This server provides object detection using YOLOv11 models optimized with Intel OpenVINO.
+    Use the available tools to detect objects in images provided via file path or base64 encoding.
+    The server returns detection results with bounding boxes, class labels, confidence scores,
+    and an annotated overlay image.
+    """
+)
 
 
 def get_color(class_id: int) -> tuple:
@@ -670,5 +681,61 @@ def get_class_labels() -> Dict[str, Any]:
     }
 
 
+# Resource to provide server information
+@mcp.resource("detection://info")
+def detection_info() -> str:
+    """Provides general information about the object detection server"""
+    import json
+    from datetime import datetime
+    info = {
+        "server_name": "OpenVINO Object Detection",
+        "type": "YOLOv11 with OpenVINO optimization",
+        "models_available": ["yolo11n", "yolo11s", "yolo11m", "yolo11l", "yolo11x"],
+        "total_classes": len(COCO_CLASSES),
+        "last_updated": datetime.now().isoformat(),
+        "description": "Object detection server using Intel OpenVINO for optimized inference"
+    }
+    return json.dumps(info, indent=2)
+
+
+# Entry point
 if __name__ == "__main__":
-    mcp.run()
+    print("Starting OpenVINO Object Detection MCP Server...")
+    print("Available transports:")
+    print("  - HTTP (default): python main.py")
+    print("  - STDIO: python main.py --stdio")
+    print("  - SSE: python main.py --sse")
+
+    parser = argparse.ArgumentParser(description="Start OpenVINO Object Detection MCP Server")
+    parser.add_argument(
+        "--stdio", action="store_true", help="Use STDIO transport"
+    )
+    parser.add_argument(
+        "--sse", action="store_true", help="Use SSE transport"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8006, help="Port for HTTP/SSE server (default: 8006)"
+    )
+    parser.add_argument(
+        "--host", type=str, default="127.0.0.1", help="Host for HTTP/SSE server (default: 127.0.0.1)"
+    )
+    args = parser.parse_args()
+
+    if args.stdio:
+        print("\n🚀 Starting STDIO server...")
+        mcp.run()  # Default STDIO transport
+    elif args.sse:
+        print(f"\n🚀 Starting SSE server on http://{args.host}:{args.port}/sse")
+        mcp.run(
+            transport="sse",
+            host=args.host,
+            port=args.port,
+        )
+    else:
+        print(f"\n🚀 Starting HTTP server on http://{args.host}:{args.port}/mcp")
+        mcp.run(
+            transport="http",
+            host=args.host,
+            port=args.port,
+            path="/mcp"
+        )
