@@ -1,0 +1,15 @@
+{
+  "openvino-object-detection": {
+    "enabled": true,
+    "url": "http://127.0.0.1:8006/mcp",
+    "transport": "http",
+    "groups": [
+      "users"
+    ],
+    "description": "Perform object detection on images using YOLOv11 models optimized with Intel OpenVINO. Detects 80 object classes (people, vehicles, animals, etc.) and returns bounding boxes, confidence scores, and annotated overlay images.",
+    "author": "Chat UI Team",
+    "short_description": "OpenVINO YOLOv11 object detection (HTTP)",
+    "help_email": "support@chatui.example.com",
+    "compliance_level": "Public"
+  }
+}

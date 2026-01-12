@@ -1,0 +1,124 @@
+# Example values for production environment
+replicaCount: 3
+
+image:
+  repository: your-registry.example.com/openvino-detection
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+  baseImage: "ubuntu"
+
+# Image pull secrets for private registry
+imagePullSecrets:
+  - name: registry-credentials
+
+service:
+  type: LoadBalancer
+  port: 8006
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: openvino.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: openvino-server-tls
+      hosts:
+        - openvino.example.com
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: "fast-ssd"
+
+# Pod disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Network policy for security
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: atlas-ui
+      ports:
+        - protocol: TCP
+          port: 8006
+  egress:
+    - to:
+      - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 443
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    prometheus: kube-prometheus
+
+# Node affinity for production workloads
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - openvino-server
+          topologyKey: kubernetes.io/hostname
+
+# Production-ready probe settings
+livenessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /mcp
+    port: 8006
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

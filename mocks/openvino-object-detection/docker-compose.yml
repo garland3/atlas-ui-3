@@ -1,0 +1,58 @@
+# Docker Compose for OpenVINO Object Detection MCP Server
+# Provides easy local deployment and testing
+
+version: '3.8'
+
+services:
+  # Ubuntu-based OpenVINO server
+  openvino-detection-ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile.ubuntu
+    container_name: openvino-detection-ubuntu
+    ports:
+      - "8006:8006"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount volume for persistent model cache
+      - openvino-models:/tmp/openvino_models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - openvino-network
+
+  # RHEL-based OpenVINO server (alternative, commented out by default)
+  # openvino-detection-rhel:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.rhel
+  #   container_name: openvino-detection-rhel
+  #   ports:
+  #     - "8007:8006"
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   volumes:
+  #     - openvino-models:/tmp/openvino_models
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8006/mcp"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   restart: unless-stopped
+  #   networks:
+  #     - openvino-network
+
+volumes:
+  openvino-models:
+    driver: local
+
+networks:
+  openvino-network:
+    driver: bridge

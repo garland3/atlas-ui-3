@@ -1,0 +1,58 @@
+# RHEL UBI-based Dockerfile for OpenVINO Object Detection MCP Server
+# This Dockerfile creates a containerized MCP server for YOLOv11 object detection with OpenVINO
+
+FROM registry.access.redhat.com/ubi9/ubi:latest
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser
+
+# Install system dependencies
+RUN dnf install -y \
+        python3.11 \
+        python3.11-pip \
+        curl \
+        ca-certificates \
+        mesa-libGL \
+        glib2 \
+    && dnf clean all && \
+    rm -rf /var/cache/dnf
+
+# Copy application files
+COPY main.py .
+COPY requirements.txt .
+COPY README.md .
+
+# Create virtual environment and install dependencies as root first
+RUN python3.11 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Create directory for model cache
+RUN mkdir -p /tmp/openvino_models && \
+    chown -R mcpuser:mcpuser /tmp/openvino_models
+
+# Change ownership to non-root user
+RUN chown -R mcpuser:mcpuser /app
+
+# Switch to non-root user
+USER mcpuser
+
+# Set up Python environment
+ENV VIRTUAL_ENV=/app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Expose the MCP server port
+EXPOSE 8006
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8006/mcp || exit 1
+
+# Start the MCP server
+CMD ["python3.11", "main.py", "--host", "0.0.0.0", "--port", "8006"]
