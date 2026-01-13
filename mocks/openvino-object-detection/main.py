@@ -70,35 +70,52 @@ def get_color(class_id: int) -> tuple:
 
 def _ensure_model_downloaded(model_name: str = "yolo11n") -> Path:
     """
-    Ensure the YOLO model is downloaded and converted to OpenVINO format.
-    
+    Locate the pre-converted OpenVINO model.
+
+    When running in Docker, models are pre-converted during build and located in /app/models.
+    When running locally, models can be converted at runtime if ultralytics is available.
+
     Args:
         model_name: Name of the YOLO model (e.g., 'yolo11n', 'yolo11s', etc.)
-    
+
     Returns:
         Path to the OpenVINO model
     """
-    from ultralytics import YOLO
-    
+    # Check for pre-converted models (Docker build-time conversion)
+    preconverted_model_dir = os.environ.get("OPENVINO_MODEL_PATH", "/app/models")
+    preconverted_path = Path(preconverted_model_dir) / f"{model_name}_openvino_model" / f"{model_name}.xml"
+
+    if preconverted_path.exists():
+        return preconverted_path
+
+    # Fallback for local development: convert at runtime if ultralytics is available
     model_dir = Path(tempfile.gettempdir()) / "openvino_models"
     model_dir.mkdir(parents=True, exist_ok=True)
-    
     ov_model_path = model_dir / f"{model_name}_openvino_model" / f"{model_name}.xml"
-    
+
     if not ov_model_path.exists():
-        # Download and export to OpenVINO format
-        pt_model = YOLO(f"{model_name}.pt")
-        pt_model.export(format="openvino", dynamic=True, half=False)
-        
-        # Move exported model to our model directory
-        exported_path = Path(f"{model_name}_openvino_model")
-        if exported_path.exists():
-            import shutil
-            target_dir = model_dir / f"{model_name}_openvino_model"
-            if target_dir.exists():
-                shutil.rmtree(target_dir)
-            shutil.move(str(exported_path), str(target_dir))
-    
+        try:
+            from ultralytics import YOLO
+
+            # Download and export to OpenVINO format
+            pt_model = YOLO(f"{model_name}.pt")
+            pt_model.export(format="openvino", dynamic=True, half=False)
+
+            # Move exported model to our model directory
+            exported_path = Path(f"{model_name}_openvino_model")
+            if exported_path.exists():
+                import shutil
+                target_dir = model_dir / f"{model_name}_openvino_model"
+                if target_dir.exists():
+                    shutil.rmtree(target_dir)
+                shutil.move(str(exported_path), str(target_dir))
+        except ImportError:
+            raise RuntimeError(
+                f"Model {model_name} not found at {preconverted_path} and ultralytics "
+                "is not available for runtime conversion. Please ensure models are "
+                "pre-converted during Docker build or install ultralytics for local development."
+            )
+
     return ov_model_path
 
 

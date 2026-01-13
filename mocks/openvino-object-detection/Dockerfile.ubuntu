@@ -1,17 +1,14 @@
 # Multi-stage Ubuntu-based Dockerfile for OpenVINO Object Detection MCP Server
-# This Dockerfile uses multi-stage builds to significantly reduce final image size
-# by excluding build tools and unnecessary dependencies from the runtime image.
+# This Dockerfile performs model conversion during build to eliminate runtime dependencies
+# like PyTorch and CUDA, resulting in a much smaller and faster runtime image.
 
-# Build stage - includes all build dependencies
-FROM ubuntu:24.04 AS builder
+# Stage 1: Model Converter - Downloads and converts YOLO models to OpenVINO format
+FROM ubuntu:24.04 AS converter
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Set working directory
 WORKDIR /app
 
-# Install build dependencies (gcc, g++, etc. needed for compiling Python packages)
+# Install Python and build dependencies for model conversion
 RUN apt-get update && \
     apt-get install -y \
         python3 \
@@ -23,11 +20,59 @@ RUN apt-get update && \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements first for better layer caching
+# Copy build requirements
+COPY requirements-build.txt .
+
+# Create virtual environment and install conversion dependencies
+RUN python3 -m venv /app/converter-venv && \
+    /app/converter-venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /app/converter-venv/bin/pip install --no-cache-dir -r requirements-build.txt
+
+# Create script to convert models
+RUN echo '#!/usr/bin/env python3\n\
+import sys\n\
+from pathlib import Path\n\
+from ultralytics import YOLO\n\
+\n\
+def convert_model(model_name):\n\
+    print(f"Converting {model_name} to OpenVINO format...")\n\
+    model = YOLO(f"{model_name}.pt")\n\
+    model.export(format="openvino", dynamic=True, half=False)\n\
+    print(f"Conversion complete: {model_name}_openvino_model/")\n\
+\n\
+if __name__ == "__main__":\n\
+    models = ["yolo11n", "yolo11s", "yolo11m", "yolo11l", "yolo11x"]\n\
+    for model_name in models:\n\
+        convert_model(model_name)\n\
+' > /app/convert_models.py && chmod +x /app/convert_models.py
+
+# Convert all YOLO models to OpenVINO format
+RUN /app/converter-venv/bin/python3 /app/convert_models.py && \
+    mkdir -p /app/models && \
+    mv *_openvino_model /app/models/
+
+# Stage 2: Builder - Installs runtime dependencies only
+FROM ubuntu:24.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+
+# Install build dependencies for compiling Python packages
+RUN apt-get update && \
+    apt-get install -y \
+        python3 \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        gcc \
+        g++ \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy runtime requirements only
 COPY requirements.txt .
 
-# Create virtual environment and install dependencies
-# Use --no-cache-dir to reduce size and compile with optimizations
+# Create virtual environment and install runtime dependencies
 RUN python3 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /app/venv/bin/pip install --no-cache-dir -r requirements.txt && \
@@ -35,19 +80,16 @@ RUN python3 -m venv /app/venv && \
     find /app/venv -type f -name "*.pyc" -delete && \
     find /app/venv -type f -name "*.pyo" -delete
 
-# Runtime stage - minimal runtime dependencies only
+# Stage 3: Runtime - Minimal runtime image with pre-converted models
 FROM ubuntu:24.04 AS runtime
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Set working directory
 WORKDIR /app
 
 # Create non-root user
 RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser
 
-# Install only runtime dependencies (no build tools)
+# Install only runtime dependencies (no build tools, no torch, no cuda)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 \
@@ -59,19 +101,19 @@ RUN apt-get update && \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
+# Copy virtual environment from builder (no PyTorch/CUDA)
 COPY --from=builder /app/venv /app/venv
+
+# Copy pre-converted OpenVINO models from converter
+COPY --from=converter /app/models /app/models
 
 # Copy application files
 COPY main.py .
 COPY README.md .
 
-# Create directory for model cache
+# Create directory for model cache and set ownership
 RUN mkdir -p /tmp/openvino_models && \
-    chown -R mcpuser:mcpuser /tmp/openvino_models
-
-# Change ownership to non-root user
-RUN chown -R mcpuser:mcpuser /app
+    chown -R mcpuser:mcpuser /tmp/openvino_models /app
 
 # Switch to non-root user
 USER mcpuser
@@ -80,6 +122,7 @@ USER mcpuser
 ENV VIRTUAL_ENV=/app/venv
 ENV PATH="/app/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+ENV OPENVINO_MODEL_PATH=/app/models
 
 # Expose the MCP server port
 EXPOSE 8006

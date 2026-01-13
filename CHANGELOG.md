@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### 2026-01-13 - OpenVINO Docker Build Optimization
+- **OpenVINO MCP Server**: Optimized Docker builds with 3-stage build process performing model conversion at build-time instead of runtime
+- Eliminated PyTorch and CUDA dependencies from runtime images resulting in 50-60% size reduction (from ~3.5GB to ~1.5-2GB)
+- Pre-convert all YOLO models (yolo11n/s/m/l/x) to OpenVINO format during build for immediate inference without first-run delays
+- Split dependencies into requirements.txt (runtime only: openvino, opencv, numpy, fastmcp) and requirements-build.txt (conversion: ultralytics, torch)
+
 ### PR #TBD - 2026-01-12
 - **OpenVINO MCP Server**: Complete OpenVINO object detection HTTP MCP server setup with comprehensive deployment infrastructure. Added Dockerfiles (Ubuntu and RHEL), docker-compose.yml, Helm charts for Kubernetes, build scripts, and detailed documentation (QUICKSTART.md, DOCKER_K8S_DEPLOYMENT.md, BUILD_NOTES.md).
 

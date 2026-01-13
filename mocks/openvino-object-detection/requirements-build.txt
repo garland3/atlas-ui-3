@@ -1,0 +1,5 @@
+# Build-time dependencies for model conversion
+# These are ONLY needed to convert YOLO models to OpenVINO format
+ultralytics>=8.3.0
+torch>=2.0.0
+torchvision>=0.15.0
