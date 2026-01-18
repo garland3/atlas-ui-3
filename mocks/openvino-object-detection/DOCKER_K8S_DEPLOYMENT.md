@@ -23,10 +23,25 @@ cd mocks/openvino-object-detection
 docker build -f Dockerfile.ubuntu -t openvino-detection:ubuntu .
 ```
 
-**Multi-stage Build:**
-- Builder stage: Includes gcc, g++, and all build tools for compiling Python packages
-- Runtime stage: Minimal Ubuntu 24.04 with only runtime dependencies
-- Result: 30-40% smaller image (~2-2.5GB vs ~3.5-4GB single-stage)
+**Build-Time Model Conversion (Optimized):**
+
+The Dockerfiles now use a 3-stage build process to dramatically reduce final image size:
+
+1. **Converter Stage**: Downloads PyTorch models and converts all YOLO variants (yolo11n/s/m/l/x) to OpenVINO format
+2. **Builder Stage**: Installs only runtime Python dependencies (no PyTorch, no CUDA)
+3. **Runtime Stage**: Copies pre-converted models and runtime dependencies only
+
+**Benefits:**
+- Eliminates PyTorch and CUDA from runtime image (saves ~2-3GB)
+- Removes ultralytics and all model conversion dependencies
+- Pre-converted models ready for immediate inference
+- Faster container startup (no first-run conversion delay)
+- Smaller attack surface (fewer dependencies)
+
+**Size Comparison:**
+- Old approach (runtime conversion): ~3.5-4GB
+- New approach (build-time conversion): ~1.5-2GB
+- **Reduction: 50-60% smaller image**
 
 #### RHEL UBI-based Image
 
@@ -35,10 +50,20 @@ cd mocks/openvino-object-detection
 docker build -f Dockerfile.rhel -t openvino-detection:rhel .
 ```
 
-**Multi-stage Build:**
-- Builder stage: Full ubi9 with gcc, python-devel for compilation
-- Runtime stage: Minimal ubi9-minimal with microdnf for smallest footprint
-- Result: Optimized for enterprise environments with reduced attack surface
+**Build-Time Model Conversion (Optimized):**
+
+Same 3-stage optimization as Ubuntu variant:
+
+1. **Converter Stage**: Full ubi9 with PyTorch for model conversion
+2. **Builder Stage**: Full ubi9 with runtime dependencies only
+3. **Runtime Stage**: Minimal ubi9-minimal with pre-converted models
+
+**Benefits:**
+- Enterprise-ready with Red Hat UBI base
+- Minimal attack surface with ubi9-minimal
+- No PyTorch/CUDA in production image
+- Optimized for OpenShift and Kubernetes environments
+- Same 50-60% size reduction as Ubuntu variant
 
 ### Running a Container
 

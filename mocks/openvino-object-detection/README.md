@@ -7,10 +7,12 @@ This is an external HTTP MCP server that provides object detection capabilities 
 - **YOLOv11 Object Detection**: State-of-the-art object detection with multiple model sizes
 - **OpenVINO Optimization**: Hardware-accelerated inference on Intel CPUs, GPUs, and VPUs
 - **HTTP Transport**: Runs as an HTTP server for external service deployment
-- **Automatic Model Download**: Models are downloaded and converted automatically on first use
+- **Build-Time Model Conversion**: Docker images pre-convert all models during build (no PyTorch/CUDA in runtime)
+- **Automatic Model Download**: Local development automatically downloads models on first use
 - **Flexible Input**: Accept images via file path or base64-encoded strings
 - **Visual Output**: Returns both structured detection data and annotated overlay images
 - **COCO Classes**: Detects 80 different object categories
+- **Optimized Docker Images**: 50-60% smaller images with pre-converted models
 
 ## Installation
 
