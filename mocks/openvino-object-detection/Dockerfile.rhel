@@ -25,23 +25,8 @@ RUN python3.11 -m venv /app/converter-venv && \
     /app/converter-venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /app/converter-venv/bin/pip install --no-cache-dir -r requirements-build.txt
 
-# Create script to convert models
-RUN echo '#!/usr/bin/env python3\n\
-import sys\n\
-from pathlib import Path\n\
-from ultralytics import YOLO\n\
-\n\
-def convert_model(model_name):\n\
-    print(f"Converting {model_name} to OpenVINO format...")\n\
-    model = YOLO(f"{model_name}.pt")\n\
-    model.export(format="openvino", dynamic=True, half=False)\n\
-    print(f"Conversion complete: {model_name}_openvino_model/")\n\
-\n\
-if __name__ == "__main__":\n\
-    models = ["yolo11n", "yolo11s", "yolo11m", "yolo11l", "yolo11x"]\n\
-    for model_name in models:\n\
-        convert_model(model_name)\n\
-' > /app/convert_models.py && chmod +x /app/convert_models.py
+# Copy model conversion script
+COPY convert_models.py .
 
 # Convert all YOLO models to OpenVINO format
 RUN /app/converter-venv/bin/python3.11 /app/convert_models.py && \
