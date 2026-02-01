@@ -191,56 +191,87 @@ class LiteLLMCaller:
             raise Exception(f"Failed to call LLM: {exc}")
     
     async def call_with_rag(
-        self, 
-        model_name: str, 
-        messages: List[Dict[str, str]], 
+        self,
+        model_name: str,
+        messages: List[Dict[str, str]],
         data_sources: List[str],
         user_email: str,
         rag_client=None,
         temperature: float = 0.7,
     ) -> str:
-        """LLM call with RAG integration."""
+        """LLM call with RAG integration.
+
+        Queries all selected data sources with best-effort semantics: if one
+        source fails, the error is logged and the remaining sources are still
+        queried. Only falls back to a plain LLM call when *every* source fails.
+        """
         if not data_sources:
             return await self.call_plain(model_name, messages, temperature=temperature)
-        
+
         # Import RAG client if not provided
         if rag_client is None:
             from modules.rag import rag_client as default_rag_client
             rag_client = default_rag_client
-        
-        # Use the first selected data source
-        data_source = data_sources[0]
-        
-        try:
-            # Query RAG for context
-            rag_response = await rag_client.query_rag(
-                user_email,
-                data_source,
-                messages
+
+        # Query each data source, collecting successes and logging failures
+        successful_responses = []
+        failed_sources = []
+        for data_source in data_sources:
+            try:
+                rag_response = await rag_client.query_rag(
+                    user_email,
+                    data_source,
+                    messages,
+                )
+                successful_responses.append((data_source, rag_response))
+            except Exception as exc:
+                logger.warning(
+                    "RAG query failed for source %s (user %s): %s",
+                    data_source, user_email, exc,
+                )
+                failed_sources.append((data_source, str(exc)))
+
+        if failed_sources:
+            logger.info(
+                "RAG best-effort: %d/%d sources failed: %s",
+                len(failed_sources),
+                len(data_sources),
+                ", ".join(src for src, _ in failed_sources),
             )
-            
-            # Integrate RAG context into messages
-            messages_with_rag = messages.copy()
+
+        # If every source failed, fall back to plain LLM call
+        if not successful_responses:
+            logger.error("All RAG sources failed, falling back to plain LLM call")
+            return await self.call_plain(model_name, messages, temperature=temperature)
+
+        # Build context messages from all successful responses
+        messages_with_rag = messages.copy()
+        for data_source, rag_response in successful_responses:
             rag_context_message = {
-                "role": "system", 
-                "content": f"Retrieved context from {data_source}:\n\n{rag_response.content}\n\nUse this context to inform your response."
+                "role": "system",
+                "content": (
+                    f"Retrieved context from {data_source}:\n\n"
+                    f"{rag_response.content}\n\n"
+                    "Use this context to inform your response."
+                ),
             }
             messages_with_rag.insert(-1, rag_context_message)
-            
-            # Call LLM with enriched context
-            llm_response = await self.call_plain(model_name, messages_with_rag, temperature=temperature)
-            
-            # Append metadata if available
+
+        # Call LLM with enriched context
+        llm_response = await self.call_plain(model_name, messages_with_rag, temperature=temperature)
+
+        # Append metadata from all successful responses
+        metadata_parts = []
+        for data_source, rag_response in successful_responses:
             if rag_response.metadata:
-                metadata_summary = self._format_rag_metadata(rag_response.metadata)
-                llm_response += f"\n\n---\n**RAG Sources & Processing Info:**\n{metadata_summary}"
-            
-            return llm_response
-            
-        except Exception as exc:
-            logger.error(f"Error in RAG-integrated query: {exc}")
-            # Fallback to plain LLM call
-            return await self.call_plain(model_name, messages, temperature=temperature)
+                metadata_parts.append(self._format_rag_metadata(rag_response.metadata))
+        if failed_sources:
+            failure_lines = [f" **{src}:** {err}" for src, err in failed_sources]
+            metadata_parts.append("**Failed Sources (best-effort):**\n" + "\n".join(failure_lines))
+        if metadata_parts:
+            llm_response += "\n\n---\n**RAG Sources & Processing Info:**\n" + "\n\n".join(metadata_parts)
+
+        return llm_response
     
     async def call_with_tools(
         self,
@@ -322,48 +353,82 @@ class LiteLLMCaller:
         rag_client=None,
         temperature: float = 0.7,
     ) -> LLMResponse:
-        """Full integration: RAG + Tools."""
+        """Full integration: RAG + Tools.
+
+        Queries all selected data sources with best-effort semantics: if one
+        source fails, the error is logged and the remaining sources are still
+        queried. Only falls back to a tools-only call when *every* source fails.
+        """
         if not data_sources:
             return await self.call_with_tools(model_name, messages, tools_schema, tool_choice, temperature=temperature)
-        
+
         # Import RAG client if not provided
         if rag_client is None:
             from modules.rag import rag_client as default_rag_client
             rag_client = default_rag_client
-        
-        # Use the first selected data source
-        data_source = data_sources[0]
-        
-        try:
-            # Query RAG for context
-            rag_response = await rag_client.query_rag(
-                user_email,
-                data_source,
-                messages
+
+        # Query each data source, collecting successes and logging failures
+        successful_responses = []
+        failed_sources = []
+        for data_source in data_sources:
+            try:
+                rag_response = await rag_client.query_rag(
+                    user_email,
+                    data_source,
+                    messages,
+                )
+                successful_responses.append((data_source, rag_response))
+            except Exception as exc:
+                logger.warning(
+                    "RAG query failed for source %s (user %s): %s",
+                    data_source, user_email, exc,
+                )
+                failed_sources.append((data_source, str(exc)))
+
+        if failed_sources:
+            logger.info(
+                "RAG+tools best-effort: %d/%d sources failed: %s",
+                len(failed_sources),
+                len(data_sources),
+                ", ".join(src for src, _ in failed_sources),
             )
-            
-            # Integrate RAG context into messages
-            messages_with_rag = messages.copy()
+
+        # If every source failed, fall back to tools-only call
+        if not successful_responses:
+            logger.error("All RAG sources failed, falling back to tools-only LLM call")
+            return await self.call_with_tools(model_name, messages, tools_schema, tool_choice, temperature=temperature)
+
+        # Build context messages from all successful responses
+        messages_with_rag = messages.copy()
+        for data_source, rag_response in successful_responses:
             rag_context_message = {
-                "role": "system", 
-                "content": f"Retrieved context from {data_source}:\n\n{rag_response.content}\n\nUse this context to inform your response."
+                "role": "system",
+                "content": (
+                    f"Retrieved context from {data_source}:\n\n"
+                    f"{rag_response.content}\n\n"
+                    "Use this context to inform your response."
+                ),
             }
             messages_with_rag.insert(-1, rag_context_message)
-            
-            # Call LLM with enriched context and tools
-            llm_response = await self.call_with_tools(model_name, messages_with_rag, tools_schema, tool_choice, temperature=temperature)
-            
-            # Append metadata to content if available and no tool calls
-            if rag_response.metadata and not llm_response.has_tool_calls():
-                metadata_summary = self._format_rag_metadata(rag_response.metadata)
-                llm_response.content += f"\n\n---\n**RAG Sources & Processing Info:**\n{metadata_summary}"
-            
-            return llm_response
-            
-        except Exception as exc:
-            logger.error(f"Error in RAG+tools integrated query: {exc}")
-            # Fallback to tools-only call
-            return await self.call_with_tools(model_name, messages, tools_schema, tool_choice, temperature=temperature)
+
+        # Call LLM with enriched context and tools
+        llm_response = await self.call_with_tools(
+            model_name, messages_with_rag, tools_schema, tool_choice, temperature=temperature,
+        )
+
+        # Append metadata to content if available and no tool calls
+        if not llm_response.has_tool_calls():
+            metadata_parts = []
+            for data_source, rag_response in successful_responses:
+                if rag_response.metadata:
+                    metadata_parts.append(self._format_rag_metadata(rag_response.metadata))
+            if failed_sources:
+                failure_lines = [f" **{src}:** {err}" for src, err in failed_sources]
+                metadata_parts.append("**Failed Sources (best-effort):**\n" + "\n".join(failure_lines))
+            if metadata_parts:
+                llm_response.content += "\n\n---\n**RAG Sources & Processing Info:**\n" + "\n\n".join(metadata_parts)
+
+        return llm_response
     
     def _format_rag_metadata(self, metadata) -> str:
         """Format RAG metadata into a user-friendly summary."""

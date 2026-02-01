@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Issue #266 - 2026-02-01
+- **Feature**: RAG retrieval now uses best-effort semantics across all selected data sources. If one source fails, the system logs the error and continues querying the remaining sources, only falling back to a plain LLM call when every source fails.
+- **Tests**: Add 8 tests covering partial failure, total failure, single-source backward compatibility, and RAG+tools integration scenarios.
+
 ### PR #215 - 2026-01-18
 - **Fix**: Restored MCP sampling implementation, re-adding per-server sampling handlers and routing context so sampling tests can import `_SamplingRoutingContext` again.
 - **Fix**: Re-enabled backend sampling workflows, ensuring the restored sampling handler uses LiteLLM preferences and the MCP client initializes with sampling support.
