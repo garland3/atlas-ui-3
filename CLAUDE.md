@@ -16,6 +16,10 @@ Atlas UI 3 is a full-stack LLM chat interface with Model Context Protocol (MCP) 
 
 **Dependency Management**: All Python dependencies are defined in `pyproject.toml` (the single source of truth); there is no `requirements.txt` -- always use `uv pip install -e ".[dev]"` for development.
 
+**Lazy Imports**: `atlas/__init__.py` uses `__getattr__` to lazily import `AtlasClient` and `ChatResult` so that lightweight CLIs like `atlas-init` do not pay the cost of loading the full dependency chain (SQLAlchemy, litellm, FastAPI, etc.).
+
+**LLM Streaming**: Token streaming uses `LiteLLMStreamingMixin` (in `litellm_streaming.py`) mixed into `LiteLLMCaller` to keep files under 400 lines; the frontend buffers tokens with `setTimeout(30ms)` -- never use `requestAnimationFrame` for token flushing as it breaks progressive rendering.
+
 ## Installation
 
 ### As a Python Package (Recommended for Users)
@@ -247,6 +251,8 @@ When `FEATURE_COMPLIANCE_LEVELS_ENABLED=true`:
 - `intermediate_update` - Files, images, etc.
 
 ### REST API
+- `/api/heartbeat` - Minimal uptime check (`{"status":"ok"}`), no auth, rate-limited
+- `/api/health` - Service status with version and timestamp, no auth, rate-limited
 - `/api/config` - Models, tools, prompts, data_sources, rag_servers, features
 - `/api/compliance-levels` - Compliance level definitions
 - `/api/feedback` - Submit (POST) and view (GET, admin) user feedback; conversation history is stored inline in the feedback JSON when the user opts in
@@ -359,6 +365,7 @@ All prompts are loaded from the directory specified by `prompt_base_path` (defau
 Request -> SecurityHeaders -> RateLimit -> Auth -> Route
 ```
 - Rate limiting before auth to prevent abuse
+- To bypass auth for a new endpoint, add it to the path check in `AuthMiddleware.dispatch()` (`atlas/core/middleware.py`); rate limiting still applies to bypassed routes
 - Prompt injection risk detection in `atlas/core/prompt_risk.py`
 - Group-based MCP server access control
 
@@ -387,6 +394,7 @@ Set `APP_AGENT_LOOP_STRATEGY` to `react | think-act | act`; ChatService uses `ap
 7. **Empty lists**: Check auth groups and compliance filtering
 8. **Host binding ignored**: `agent_start.sh` and the Dockerfile both use `ATLAS_HOST` env var for host binding; `main.py` also reads it directly -- keep all three in sync when changing network configuration
 9. **DuckDB FK constraints**: DuckDB does not support CASCADE or UPDATE on foreign-key-constrained tables; the `chat_history` module avoids all database-level ForeignKey constraints and enforces referential integrity manually in the repository layer instead
+10. **Chat history default**: Chat history with DuckDB is enabled by default in `.env.example`; new setups get conversation persistence without extra configuration
 
 **K3s/Docker Compose Deployment:** Production-like deployment configs live in `deploy/` (K3s manifests, Docker Compose, Nginx, auth service). Docs are in `docs/deployment/`. The `prod_setup.sh` script in the project root provides cron-based auto-update for K3s deployments.
 

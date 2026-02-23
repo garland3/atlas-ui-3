@@ -1,12 +1,16 @@
 # GitHub Copilot Guide: Atlas UI 3
 
-Last updated: 2026-02-13
+Last updated: 2026-02-22
 
 Concise rules for getting productive fast in this repo. Prefer these over exploration; fall back to code/docs only if something is missing.
 
 **PyPI Packaging**: The CI workflow bundles the frontend into `atlas/static/` before building the wheel; at runtime `atlas/main.py` checks `atlas/static/` first (package install) then falls back to `frontend/dist/` (local dev), so both paths work transparently.
 
 **Dependency Management**: All Python dependencies are defined in `pyproject.toml` (the single source of truth); there is no `requirements.txt` -- always use `uv pip install -e ".[dev]"` for development.
+
+**Lazy Imports**: `atlas/__init__.py` uses `__getattr__` to lazily import `AtlasClient` and `ChatResult` so that lightweight CLIs like `atlas-init` do not pay the cost of loading the full dependency chain.
+
+**LLM Streaming**: Token streaming uses `LiteLLMStreamingMixin` (in `litellm_streaming.py`) mixed into `LiteLLMCaller`; the frontend buffers tokens with `setTimeout(30ms)` -- never use `requestAnimationFrame` for token flushing as it breaks progressive rendering.
 
 ## Do This First
 
@@ -169,6 +173,7 @@ Request -> SecurityHeaders -> RateLimit -> Auth -> Route
 ```
 
 - Rate limiting before auth to prevent abuse
+- To bypass auth for a new endpoint, add it to the path check in `AuthMiddleware.dispatch()` (`atlas/core/middleware.py`); rate limiting still applies to bypassed routes
 - Prompt injection risk detection in `atlas/core/prompt_risk.py`
 - Group-based MCP server access control
 - Auth: In prod, reverse proxy injects `X-User-Email`; dev falls back to test user
@@ -262,6 +267,7 @@ Set `APP_AGENT_LOOP_STRATEGY` to `react | think-act | act`.
 6. **Empty lists**: Check auth groups and compliance filtering
 7. **Host binding ignored**: `agent_start.sh` and the Dockerfile both use `ATLAS_HOST` env var for host binding; `main.py` also reads it directly -- keep all three in sync when changing network configuration
 8. **DuckDB FK constraints**: DuckDB does not support CASCADE or UPDATE on foreign-key-constrained tables; the `chat_history` module avoids all database-level ForeignKey constraints and enforces referential integrity manually in the repository layer instead
+9. **Chat history default**: Chat history with DuckDB is enabled by default in `.env.example`; new setups get conversation persistence without extra configuration
 
 **K3s/Docker Compose Deployment:** Production-like deployment configs live in `deploy/` (K3s manifests, Docker Compose, Nginx, auth service). Docs are in `docs/deployment/`. The `prod_setup.sh` script in the project root provides cron-based auto-update for K3s deployments.
 
