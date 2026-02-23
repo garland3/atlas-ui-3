@@ -88,6 +88,9 @@ data/minio/
 minio-data/
 backend/minio-data/
 
+# Auth user data (contains hashed passwords)
+data/auth/
+
 # Chat history database
 data/*.db
 data/*.wal
@@ -99,6 +102,9 @@ old.env
 .temp.env
 temp.config
 backend/bandit_output.txt
+
+# Auto-update lock file (created by prod_setup.sh)
+.auto-update.lock
 
 # Scratch folder (local experimentation)
 scratch/

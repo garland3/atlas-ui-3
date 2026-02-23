@@ -302,6 +302,8 @@ Set `APP_AGENT_LOOP_STRATEGY` to `react | think-act | act`.
 8. **Host binding ignored**: `agent_start.sh` and the Dockerfile both use `ATLAS_HOST` env var for host binding; `main.py` also reads it directly -- keep all three in sync when changing network configuration
 9. **DuckDB FK constraints**: DuckDB does not support CASCADE or UPDATE on foreign-key-constrained tables; the `chat_history` module avoids all database-level ForeignKey constraints and enforces referential integrity manually in the repository layer instead
 
+**K3s/Docker Compose Deployment:** Production-like deployment configs live in `deploy/` (K3s manifests, Docker Compose, Nginx, auth service). Docs are in `docs/deployment/`. The `prod_setup.sh` script in the project root provides cron-based auto-update for K3s deployments.
+
 ## Critical Restrictions
 
 - **NEVER use `uvicorn --reload`** - causes development issues

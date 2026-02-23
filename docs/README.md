@@ -1,10 +1,11 @@
 # Atlas UI 3 Documentation Overview
 
-Last updated: 2026-01-19
+Last updated: 2026-02-18
 
 This directory contains the main documentation for Atlas UI 3. Use this guide to quickly find the right area when developing or operating the system.
 
 - `admin/`: Operational and admin-focused docs such as configuration, logs, health checks, and admin APIs or workflows.
+- `deployment/`: Deployment guides for running ATLAS in production-like environments (K3s, Docker Compose). These are examples for personal/home server use.
 - `archive/`: Older or experimental documents that are kept for reference but are not part of the primary, current workflow.
 - `developer/`: Developer-focused design notes, architecture overviews, implementation details, and guidelines for contributing to the codebase.
 - `example/`: Example configurations, payloads, and scenarios that demonstrate how to use Atlas UI 3 features end-to-end.

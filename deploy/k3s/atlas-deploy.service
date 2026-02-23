@@ -1,0 +1,16 @@
+[Unit]
+Description=Deploy ATLAS to K3s
+After=k3s.service
+Requires=k3s.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=garlan
+ExecStart=/home/garlan/prod-atlas/atlas-ui-3/deploy/k3s/boot-deploy.sh
+StandardOutput=append:/home/garlan/prod-atlas/atlas-ui-3/logs/boot-deploy.log
+StandardError=append:/home/garlan/prod-atlas/atlas-ui-3/logs/boot-deploy.log
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### PR #TBD - 2026-02-18
+- **Docs**: Add `docs/deployment/` with K3s and Docker Compose deployment guides, including architecture diagrams, CLI reference, auto-update cron setup, and troubleshooting.
+- **Feature**: Add `deploy/` directory with K3s manifests, Docker Compose production config, Nginx reverse proxy config, auth service, and deployment CLI (`run.sh`).
+- **Feature**: Add `prod_setup.sh` auto-update script for cron-based git pull, rebuild, and redeploy.
+
 ### PR #344 - 2026-02-16
 - **Feature**: Chat history persistence with DuckDB (local) and PostgreSQL (production) support. Conversations, messages, and tags are saved to a database and can be browsed, searched, loaded, and deleted from the sidebar.
 - **Feature**: Incognito mode prevents conversation saving, with a clear visual indicator in the header.
