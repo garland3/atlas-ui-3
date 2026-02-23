@@ -102,6 +102,11 @@ cmd_up() {
     echo "  Configuring Traefik..."
     sudo cp "$K3S_MANIFESTS/traefik-config.yaml" /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
 
+    # Restart deployments to pick up new images (same tag, new contents)
+    echo "  Restarting deployments to pick up new images..."
+    kubectl_cmd rollout restart deployment/atlas-auth -n "$NAMESPACE"
+    kubectl_cmd rollout restart deployment/atlas-ui -n "$NAMESPACE"
+
     # Wait for rollouts
     echo "  Waiting for deployments to be ready..."
     kubectl_cmd rollout status deployment/atlas-auth -n "$NAMESPACE" --timeout=120s

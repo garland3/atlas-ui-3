@@ -5,6 +5,10 @@
 #
 # This is an example for personal/home server use.
 # Review and adjust BRANCH, REMOTE, and DEPLOY_SCRIPT for your setup.
+#
+# Usage:
+#   prod_setup.sh           # Normal: only rebuild if git has new changes
+#   prod_setup.sh --force   # Force rebuild and redeploy even if up to date
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,6 +17,11 @@ LOG_PREFIX="[atlas-auto-update]"
 BRANCH="main"
 REMOTE="origin"
 LOCK_FILE="$PROJECT_ROOT/.auto-update.lock"
+FORCE=false
+
+if [ "${1:-}" = "--force" ] || [ "${1:-}" = "-f" ]; then
+    FORCE=true
+fi
 
 log() {
     echo "$LOG_PREFIX $(date '+%Y-%m-%d %H:%M:%S') $*"
@@ -49,19 +58,25 @@ git fetch "$REMOTE" "$BRANCH" 2>&1
 LOCAL_SHA=$(git rev-parse HEAD)
 REMOTE_SHA=$(git rev-parse "$REMOTE/$BRANCH")
 
-if [ "$LOCAL_SHA" = "$REMOTE_SHA" ]; then
+if [ "$LOCAL_SHA" = "$REMOTE_SHA" ] && [ "$FORCE" = false ]; then
     log "Already up to date at $LOCAL_SHA. Nothing to do."
     exit 0
 fi
 
-log "New changes detected: $LOCAL_SHA -> $REMOTE_SHA"
+if [ "$FORCE" = true ] && [ "$LOCAL_SHA" = "$REMOTE_SHA" ]; then
+    log "Force rebuild requested (already at $LOCAL_SHA)."
+else
+    log "New changes detected: $LOCAL_SHA -> $REMOTE_SHA"
+fi
 
 # ---------------------------------------------------------------------------
-# Pull changes
+# Pull changes (skip if forcing with no new commits)
 # ---------------------------------------------------------------------------
-log "Switching to $BRANCH and pulling..."
-git checkout "$BRANCH" 2>&1
-git pull "$REMOTE" "$BRANCH" 2>&1
+if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+    log "Switching to $BRANCH and pulling..."
+    git checkout "$BRANCH" 2>&1
+    git pull "$REMOTE" "$BRANCH" 2>&1
+fi
 
 NEW_SHA=$(git rev-parse HEAD)
 log "Updated to $NEW_SHA"
