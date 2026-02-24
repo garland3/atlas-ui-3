@@ -122,6 +122,8 @@ frontend/src/
 - Expected tools: `rag_discover_resources`, `rag_get_raw_results`, optional `rag_get_synthesized_results`
 - Resources and servers may include `complianceLevel`
 
+**Prefect Orchestration MCP Servers:** The `prefect_planner` and `prefect_runner` MCP servers demonstrate mapping MCP tools to Prefect `@task` definitions and orchestrating them as flows submitted to work pools; a mock Prefect API server in `mocks/prefect-orchestration-mock/` allows testing without a real Prefect deployment.
+
 **PPTX Generator MCP Server:** The `pptx_generator` MCP server (`atlas/mcp/pptx_generator/main.py`) uses a three-tier layout strategy: custom template file (via `PPTX_TEMPLATE_PATH` env var or search paths) -> built-in Office "Title and Content" layout -> blank layout with manual textboxes.
 
 **Testing MCP:**

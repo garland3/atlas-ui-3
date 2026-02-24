@@ -1,0 +1,20 @@
+{
+  "prefect_runner": {
+    "command": [
+      "python",
+      "mcp/prefect_runner/main.py"
+    ],
+    "cwd": "atlas",
+    "groups": [
+      "users"
+    ],
+    "env": {
+      "PREFECT_API_URL": "http://127.0.0.1:4220"
+    },
+    "description": "Submits Prefect flows to work pools as deployments and manages flow runs. Works with the Prefect Planner to execute planned workflows via a Prefect server (or mock).",
+    "author": "Atlas UI Team",
+    "short_description": "Prefect flow runner and work pool manager",
+    "help_email": "support@example.com",
+    "compliance_level": "Public"
+  }
+}

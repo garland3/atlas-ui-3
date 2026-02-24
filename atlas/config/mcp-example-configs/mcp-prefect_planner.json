@@ -1,0 +1,17 @@
+{
+  "prefect_planner": {
+    "command": [
+      "python",
+      "mcp/prefect_planner/main.py"
+    ],
+    "cwd": "atlas",
+    "groups": [
+      "users"
+    ],
+    "description": "Maps available MCP tools to Prefect task definitions and plans Prefect flows. Uses LLM sampling to determine task ordering and dependencies for workflow orchestration.",
+    "author": "Atlas UI Team",
+    "short_description": "Prefect flow planner from MCP tools",
+    "help_email": "support@example.com",
+    "compliance_level": "Public"
+  }
+}

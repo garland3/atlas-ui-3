@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### MCP Prefect Orchestration Example - 2026-02-24
+- Added Prefect orchestration MCP example: a planning MCP tool that maps available MCP tools to Prefect `@task` definitions and assembles them into flows, and a runner MCP tool that submits flows to Prefect work pools as deployments/jobs.
+- Added mock Prefect API server in `mocks/prefect-orchestration-mock/` for testing without a real Prefect deployment.
+
 ### PR #358 - 2026-02-22
 - **Feature**: Parallel multi-tool calling support (issue #353). When an LLM returns multiple tool calls in a single response, all calls now execute concurrently via `asyncio.gather` instead of sequentially or only the first. Applies to all three agent loops (ReAct, Think-Act, Act) and the non-agent tools mode.
 
