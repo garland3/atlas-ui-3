@@ -371,8 +371,9 @@ class TestToolsAsPythonStubs:
 
     def test_function_calls_correct_server(self):
         result = _tools_as_python_stubs(SAMPLE_MCP_DATA)
-        assert '"calculator"' in result
-        assert '"csv-reporter"' in result
+        # repr() produces single-quoted strings for simple names
+        assert "'calculator'" in result or '"calculator"' in result
+        assert "'csv-reporter'" in result or '"csv-reporter"' in result
 
     def test_includes_import(self):
         result = _tools_as_python_stubs(SAMPLE_MCP_DATA)

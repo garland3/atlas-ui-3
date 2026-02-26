@@ -869,9 +869,13 @@ class TestConversationSavedEvent:
         from atlas.domain.messages.models import Message, MessageRole
 
         session_id = uuid4()
-        asyncio.get_event_loop().run_until_complete(
-            chat_service.create_session(session_id, "user@test.com")
-        )
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(
+                chat_service.create_session(session_id, "user@test.com")
+            )
+        finally:
+            loop.close()
         session = chat_service.sessions.get(session_id)
         session.history.add_message(Message(role=MessageRole.USER, content="Hello"))
         session.history.add_message(Message(role=MessageRole.ASSISTANT, content="Hi"))
