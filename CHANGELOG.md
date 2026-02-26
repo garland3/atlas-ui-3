@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Feature**: Add K3s Job Runner MCP server (`k3s_job_runner`) that executes Python code as isolated Kubernetes Jobs orchestrated by Prefect. Includes full Prefect stack deployment (PostgreSQL, server, worker) in the atlas K3s namespace.
 - **Deployment**: Add Prefect K3s manifests (30-33), flow runner Dockerfile and deployment scripts in `deploy/prefect/`, and `run.sh` integration for building/deploying Prefect components.
 
+### PR #348 - 2026-02-24
+- **Feature**: LaTeX rendering in assistant messages using KaTeX. Display math (`\[...\]`, `$$...$$`) and inline math (`\(...\)`, `$...$`) are rendered as formatted equations. LaTeX inside fenced code blocks and inline code spans is left as-is.
+
+### PR #362 - 2026-02-24
+- **Fix**: Conversation save/display duplication bug (issue #356). Backend now sends a `conversation_saved` WebSocket event with the `conversation_id` after persisting, so the frontend can track the active conversation and avoid optimistic UI duplicates in the sidebar.
+- **Feature**: Download all conversations (issue #354). New "Download All Conversations" button in the sidebar exports all saved conversations with full messages as a JSON file via `GET /api/conversations/export`.
+
+### PR #368 - 2026-02-23
+- **Feature**: Update RAG discovery API to v2 format. Data sources now return `id`, `label`, `compliance_level`, and `description` fields. The `label` and `description` are displayed in the data sources panel with a more compact layout.
+
 ### PR #358 - 2026-02-22
 - **Feature**: Parallel multi-tool calling support (issue #353). When an LLM returns multiple tool calls in a single response, all calls now execute concurrently via `asyncio.gather` instead of sequentially or only the first. Applies to all three agent loops (ReAct, Think-Act, Act) and the non-agent tools mode.
 
