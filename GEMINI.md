@@ -297,6 +297,8 @@ Edit `config/rag-sources.json` (your local config). For MCP RAG servers, set `ty
 **Change agent loop:**
 Set `APP_AGENT_LOOP_STRATEGY` to `react | think-act | act`.
 
+**Prefect Job Runner:** The `k3s_job_runner` MCP server uses `httpx` to call the Prefect REST API directly (not the heavy `prefect` package), keeping the Atlas container lightweight; the `prefect` dependency only exists in the flow runner container (`deploy/prefect/Dockerfile`).
+
 ## Common Issues
 
 1. **"uv not found"**: Install uv package manager

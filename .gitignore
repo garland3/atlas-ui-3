@@ -95,6 +95,9 @@ data/auth/
 data/*.db
 data/*.wal
 
+# Prefect PostgreSQL data (persistent storage)
+data/prefect-postgres/
+
 # Legacy S3 Mock Storage (deprecated)
 mocks/s3-mock/s3-mock-storage/
 .old.env

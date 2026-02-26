@@ -1,0 +1,68 @@
+# Prefect Server - API and UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-server
+  namespace: atlas
+  labels:
+    app: prefect-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prefect-server
+  template:
+    metadata:
+      labels:
+        app: prefect-server
+    spec:
+      containers:
+        - name: prefect-server
+          image: prefecthq/prefect:3-latest
+          command: ["prefect", "server", "start", "--host", "0.0.0.0"]
+          ports:
+            - containerPort: 4200
+          env:
+            - name: PREFECT_API_DATABASE_CONNECTION_URL
+              value: "postgresql+asyncpg://prefect:prefect-secret-password@prefect-postgres:5432/prefect"
+            - name: PREFECT_SERVER_API_HOST
+              value: "0.0.0.0"
+            - name: PREFECT_SERVER_API_PORT
+              value: "4200"
+            - name: PREFECT_UI_SERVE_BASE
+              value: "/prefect"
+            - name: PREFECT_API_URL
+              value: "http://prefect-server:4200/api"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 4200
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 4200
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-server
+  namespace: atlas
+spec:
+  selector:
+    app: prefect-server
+  ports:
+    - port: 4200
+      targetPort: 4200

@@ -29,6 +29,13 @@ spec:
   entryPoints:
     - web
   routes:
+    - match: PathPrefix(`/prefect`)
+      kind: Rule
+      middlewares:
+        - name: auth-chain
+      services:
+        - name: prefect-server
+          port: 4200
     - match: PathPrefix(`/`)
       kind: Rule
       middlewares:

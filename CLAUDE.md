@@ -400,6 +400,8 @@ Set `APP_AGENT_LOOP_STRATEGY` to `react | think-act | act`; ChatService uses `ap
 
 **K3s/Docker Compose Deployment:** Production-like deployment configs live in `deploy/` (K3s manifests, Docker Compose, Nginx, auth service). Docs are in `docs/deployment/`. The `prod_setup.sh` script in the project root provides cron-based auto-update for K3s deployments.
 
+**Prefect Job Runner:** The `k3s_job_runner` MCP server uses `httpx` to call the Prefect REST API directly rather than importing the heavy `prefect` package, keeping the Atlas container lightweight; the actual `prefect` dependency only exists in the flow runner container image (`deploy/prefect/Dockerfile`).
+
 ## PR Validation Scripts (Required)
 
 **Any PR that changes backend code MUST include a validation script** in `test/pr-validation/` before the code is committed, the PR is created, or the PR is reviewed/merged.

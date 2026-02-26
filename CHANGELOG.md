@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### K3s Job Runner with Prefect - 2026-02-24
+- **Feature**: Add K3s Job Runner MCP server (`k3s_job_runner`) that executes Python code as isolated Kubernetes Jobs orchestrated by Prefect. Includes full Prefect stack deployment (PostgreSQL, server, worker) in the atlas K3s namespace.
+- **Deployment**: Add Prefect K3s manifests (30-33), flow runner Dockerfile and deployment scripts in `deploy/prefect/`, and `run.sh` integration for building/deploying Prefect components.
+
 ### PR #358 - 2026-02-22
 - **Feature**: Parallel multi-tool calling support (issue #353). When an LLM returns multiple tool calls in a single response, all calls now execute concurrently via `asyncio.gather` instead of sequentially or only the first. Applies to all three agent loops (ReAct, Think-Act, Act) and the non-agent tools mode.
 

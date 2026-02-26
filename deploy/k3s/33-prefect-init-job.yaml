@@ -1,0 +1,53 @@
+# One-shot Job to create the Prefect work pool after server is ready
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prefect-init
+  namespace: atlas
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: prefect-init
+          image: prefecthq/prefect:3-latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Waiting for Prefect server to be healthy..."
+              for i in $(seq 1 60); do
+                if curl -sf http://prefect-server:4200/api/health > /dev/null 2>&1; then
+                  echo "Prefect server is healthy."
+                  break
+                fi
+                echo "  Attempt $i/60 - server not ready, waiting 5s..."
+                sleep 5
+              done
+
+              # Verify server is actually healthy
+              if ! curl -sf http://prefect-server:4200/api/health > /dev/null 2>&1; then
+                echo "ERROR: Prefect server did not become healthy in time."
+                exit 1
+              fi
+
+              echo "Creating kubernetes-pool work pool..."
+              prefect work-pool create kubernetes-pool --type kubernetes || {
+                echo "Work pool may already exist, checking..."
+                prefect work-pool inspect kubernetes-pool && echo "Work pool already exists." || exit 1
+              }
+
+              echo "Prefect init complete."
+          env:
+            - name: PREFECT_API_URL
+              value: "http://prefect-server:4200/api"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

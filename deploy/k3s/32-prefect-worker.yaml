@@ -1,0 +1,74 @@
+# Prefect Kubernetes Worker - polls work queue and creates K8s Jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prefect-worker
+  namespace: atlas
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prefect-worker-role
+  namespace: atlas
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prefect-worker-binding
+  namespace: atlas
+subjects:
+  - kind: ServiceAccount
+    name: prefect-worker
+    namespace: atlas
+roleRef:
+  kind: Role
+  name: prefect-worker-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-worker
+  namespace: atlas
+  labels:
+    app: prefect-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prefect-worker
+  template:
+    metadata:
+      labels:
+        app: prefect-worker
+    spec:
+      serviceAccountName: prefect-worker
+      containers:
+        - name: prefect-worker
+          image: prefecthq/prefect:3-latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              pip install prefect-kubernetes --quiet &&
+              prefect worker start --pool kubernetes-pool --type kubernetes
+          env:
+            - name: PREFECT_API_URL
+              value: "http://prefect-server:4200/api"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

@@ -1,0 +1,17 @@
+{
+  "k3s_job_runner": {
+    "command": [
+      "python",
+      "mcp/k3s_job_runner/main.py"
+    ],
+    "cwd": "atlas",
+    "groups": [
+      "admins"
+    ],
+    "description": "Execute Python code as isolated Kubernetes Jobs orchestrated by Prefect. Code runs in a python:3.12-slim container with no K8s API access, non-root user, and resource limits. Good for data processing, computations, and algorithm prototyping.",
+    "author": "Chat UI Team",
+    "short_description": "K8s Python job runner",
+    "help_email": "support@chatui.example.com",
+    "compliance_level": "Internal"
+  }
+}

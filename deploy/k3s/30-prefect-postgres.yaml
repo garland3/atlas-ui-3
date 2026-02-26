@@ -1,0 +1,97 @@
+# Prefect PostgreSQL 16 - state database for Prefect server
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prefect-secrets
+  namespace: atlas
+type: Opaque
+stringData:
+  POSTGRES_USER: prefect
+  POSTGRES_PASSWORD: prefect-secret-password
+  POSTGRES_DB: prefect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-postgres
+  namespace: atlas
+  labels:
+    app: prefect-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prefect-postgres
+  template:
+    metadata:
+      labels:
+        app: prefect-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-secrets
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: prefect-pg-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - prefect
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - prefect
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: prefect-pg-data
+          hostPath:
+            path: /home/garlan/prod-atlas/atlas-ui-3/data/prefect-postgres
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-postgres
+  namespace: atlas
+spec:
+  selector:
+    app: prefect-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -39,10 +39,13 @@ kubectl_cmd() {
 resolve_deployment() {
     local svc="${1:-}"
     case "$svc" in
-        atlas-auth|auth)  echo "atlas-auth" ;;
-        atlas-ui|ui)      echo "atlas-ui" ;;
-        minio)            echo "minio" ;;
-        *)                echo "$svc" ;;
+        atlas-auth|auth)          echo "atlas-auth" ;;
+        atlas-ui|ui)              echo "atlas-ui" ;;
+        minio)                    echo "minio" ;;
+        prefect|prefect-server)   echo "prefect-server" ;;
+        prefect-worker)           echo "prefect-worker" ;;
+        prefect-postgres)         echo "prefect-postgres" ;;
+        *)                        echo "$svc" ;;
     esac
 }
 
@@ -66,9 +69,16 @@ cmd_build() {
         -f "$PROJECT_ROOT/deploy/auth-service/Dockerfile" \
         "$PROJECT_ROOT/deploy/auth-service"
 
+    echo "  Building atlas-prefect-runner..."
+    podman build \
+        -t localhost/atlas-prefect-runner:latest \
+        -f "$PROJECT_ROOT/deploy/prefect/Dockerfile" \
+        "$PROJECT_ROOT/deploy/prefect"
+
     echo "Importing images into k3s containerd..."
     podman save localhost/atlas-ui:latest | sudo k3s ctr images import -
     podman save localhost/atlas-auth:latest | sudo k3s ctr images import -
+    podman save localhost/atlas-prefect-runner:latest | sudo k3s ctr images import -
 
     echo "Build complete. Images imported into k3s."
 }
@@ -94,6 +104,15 @@ cmd_up() {
     kubectl_cmd delete job minio-init -n "$NAMESPACE" --ignore-not-found
     envsubst < "$K3S_MANIFESTS/13-minio-init-job.yaml" | kubectl_cmd apply -f -
 
+    # Apply Prefect stack
+    kubectl_cmd apply -f "$K3S_MANIFESTS/30-prefect-postgres.yaml"
+    kubectl_cmd apply -f "$K3S_MANIFESTS/31-prefect-server.yaml"
+    kubectl_cmd apply -f "$K3S_MANIFESTS/32-prefect-worker.yaml"
+
+    # Delete previous prefect-init job if it exists, then recreate
+    kubectl_cmd delete job prefect-init -n "$NAMESPACE" --ignore-not-found
+    kubectl_cmd apply -f "$K3S_MANIFESTS/33-prefect-init-job.yaml"
+
     # Apply Traefik middleware and ingress routes
     kubectl_cmd apply -f "$K3S_MANIFESTS/20-middleware.yaml"
     kubectl_cmd apply -f "$K3S_MANIFESTS/21-ingressroute.yaml"
@@ -107,10 +126,17 @@ cmd_up() {
     kubectl_cmd rollout restart deployment/atlas-auth -n "$NAMESPACE"
     kubectl_cmd rollout restart deployment/atlas-ui -n "$NAMESPACE"
 
+    # Restart Prefect deployments to pick up new images
+    kubectl_cmd rollout restart deployment/prefect-server -n "$NAMESPACE"
+    kubectl_cmd rollout restart deployment/prefect-worker -n "$NAMESPACE"
+
     # Wait for rollouts
     echo "  Waiting for deployments to be ready..."
     kubectl_cmd rollout status deployment/atlas-auth -n "$NAMESPACE" --timeout=120s
     kubectl_cmd rollout status deployment/minio -n "$NAMESPACE" --timeout=120s
+    kubectl_cmd rollout status deployment/prefect-postgres -n "$NAMESPACE" --timeout=120s
+    kubectl_cmd rollout status deployment/prefect-server -n "$NAMESPACE" --timeout=180s
+    kubectl_cmd rollout status deployment/prefect-worker -n "$NAMESPACE" --timeout=180s
     kubectl_cmd rollout status deployment/atlas-ui -n "$NAMESPACE" --timeout=180s
 
     echo ""
@@ -184,6 +210,9 @@ Service aliases:
   auth, atlas-auth   -> atlas-auth deployment
   ui, atlas-ui       -> atlas-ui deployment
   minio              -> minio deployment
+  prefect            -> prefect-server deployment
+  prefect-worker     -> prefect-worker deployment
+  prefect-postgres   -> prefect-postgres deployment
 
 Examples:
   $0 build                   # Build and import images
