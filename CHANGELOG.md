@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### PR #367 - 2026-02-25
 - **Feature**: 3-state chat save mode (issue #367). Users cycle between Incognito (nothing saved), Saved Locally (IndexedDB in browser), and Saved to Server (backend database). The selected mode persists across page refreshes via `usePersistentState`. New `localConversationDB.js` IndexedDB wrapper and `useLocalConversationHistory` hook provide browser-local conversation storage with the same API shape as the server-backed hook.
 
+### PR #365 - 2026-02-24
+- **Feature**: Globus OAuth integration for ALCF inference endpoints (issue #361). Users log in via Globus Auth to automatically obtain access tokens for ALCF and other Globus-scoped services, eliminating manual token copy-paste.
+- **Feature**: New `api_key_source: "globus"` option for LLM models with `globus_scope` field to identify which Globus resource server token to use.
+
 ### K3s Job Runner with Prefect - 2026-02-24
 - **Feature**: Add K3s Job Runner MCP server (`k3s_job_runner`) that executes Python code as isolated Kubernetes Jobs orchestrated by Prefect. Includes full Prefect stack deployment (PostgreSQL, server, worker) in the atlas K3s namespace.
 - **Deployment**: Add Prefect K3s manifests (30-33), flow runner Dockerfile and deployment scripts in `deploy/prefect/`, and `run.sh` integration for building/deploying Prefect components.
