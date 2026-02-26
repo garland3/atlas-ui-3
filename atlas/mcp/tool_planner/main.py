@@ -16,7 +16,7 @@ import base64
 import json
 import re
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastmcp import Context, FastMCP
 
@@ -189,9 +189,10 @@ def _tools_as_python_stubs(mcp_data: Dict[str, Any]) -> str:
         sdesc = server.get("description", "")
         safe = re.sub(r"[^a-zA-Z0-9_]", "_", sname)
 
+        safe_desc = sdesc.replace('"""', "'''")
         lines.append(f"def atlas_tool_{safe}(prompt: str, output_file: str = '') -> str:")
-        lines.append(f'    """Call the {sname} tool. {sdesc}"""')
-        lines.append(f'    return _run_atlas_tool(prompt, "{sname}", output_file)')
+        lines.append(f'    """Call the {sname} tool. {safe_desc}"""')
+        lines.append(f'    return _run_atlas_tool(prompt, {repr(sname)}, output_file)')
         lines.append("")
         lines.append("")
 
@@ -385,15 +386,26 @@ async def execute_cli_plan(
         Atlas artifact dict with JSON execution results.
     """
     try:
-        steps: List = json.loads(steps_json)
+        steps: list = json.loads(steps_json)
     except json.JSONDecodeError as exc:
         return {"results": {"error": f"Invalid JSON: {exc}", "success": False}}
 
     if not isinstance(steps, list):
         return {"results": {"error": "Expected a JSON array of [prompt, tool] pairs."}}
 
+    max_steps = 50
+    if len(steps) > max_steps:
+        return {"results": {"error": f"Too many steps ({len(steps)}). Maximum is {max_steps}."}}
+
+    # Build allowlist of known tool server names from _mcp_data if available
+    known_servers: set[str] = set()
+    if _mcp_data and isinstance(_mcp_data, dict):
+        for sname in _mcp_data.get("available_servers", {}):
+            known_servers.add(str(sname))
+
     total = len(steps)
     outputs: list[Dict[str, Any]] = []
+    step_timeout = 300  # 5 minutes per step
 
     for i, step in enumerate(steps):
         if not isinstance(step, (list, tuple)) or len(step) != 2:
@@ -401,6 +413,12 @@ async def execute_cli_plan(
             continue
 
         prompt, tool = str(step[0]), str(step[1])
+
+        # Validate tool name against known servers when available
+        if known_servers and tool not in known_servers:
+            outputs.append({"step": i + 1, "prompt": prompt, "tool": tool,
+                            "error": f"Unknown tool server: {tool}"})
+            continue
 
         if ctx:
             await ctx.report_progress(
@@ -415,7 +433,7 @@ async def execute_cli_plan(
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await proc.communicate()
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=step_timeout)
             outputs.append({
                 "step": i + 1,
                 "prompt": prompt,
@@ -427,6 +445,14 @@ async def execute_cli_plan(
                     if proc.returncode != 0 else ""
                 ),
             })
+        except asyncio.TimeoutError:
+            # Kill the timed-out subprocess
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+            outputs.append({"step": i + 1, "prompt": prompt, "tool": tool,
+                            "error": f"Step timed out after {step_timeout}s"})
         except Exception as exc:
             outputs.append({"step": i + 1, "prompt": prompt, "tool": tool, "error": str(exc)})
 
