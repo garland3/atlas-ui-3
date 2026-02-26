@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### PR #367 - 2026-02-25
 - **Feature**: 3-state chat save mode (issue #367). Users cycle between Incognito (nothing saved), Saved Locally (IndexedDB in browser), and Saved to Server (backend database). The selected mode persists across page refreshes via `usePersistentState`. New `localConversationDB.js` IndexedDB wrapper and `useLocalConversationHistory` hook provide browser-local conversation storage with the same API shape as the server-backed hook.
 
@@ -69,6 +70,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### PR #335 - 2026-02-14
 - **Fix**: RAG no longer triggers automatically when data sources are selected. Selecting data sources now only marks availability; RAG is invoked only when explicitly activated via the search button toggle or the `/search` command.
+
+### PR #338 - 2026-02-13
+- **Feature**: Add four new tools to the tool_planner MCP server: `plan_cli_steps` (AI generates ordered (prompt, tool) tuples), `execute_cli_plan` (runs tuple list sequentially via atlas-chat), `generate_tool_functions` (maps MCP tools to Python function stubs), and `plan_python_workflow` (AI generates a .py workflow with if/elif/for control flow).
 
 ### PR #334 - 2026-02-13
 - **Fix**: Add exponential backoff with jitter to all frontend polling endpoints to prevent accidental backend DOS. Affects WebSocket health checks, log viewer, MCP status polling, and banner panel.
