@@ -18,6 +18,8 @@ permissions:
 jobs:
   dependency-scan:
     name: Dependency Vulnerability Scan
+    # Only run on the upstream repo (CodeQL, SARIF uploads require org permissions)
+    if: github.repository == 'sandialabs/atlas-ui-3'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -96,6 +98,7 @@ jobs:
 
   sast-scan:
     name: Static Application Security Testing
+    if: github.repository == 'sandialabs/atlas-ui-3'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -160,6 +163,7 @@ jobs:
 
   secrets-scan:
     name: Secrets Scanning
+    if: github.repository == 'sandialabs/atlas-ui-3'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -183,6 +187,7 @@ jobs:
 
   container-scan:
     name: Container Security Scan
+    if: github.repository == 'sandialabs/atlas-ui-3'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -237,6 +242,7 @@ jobs:
 
   security-summary:
     name: Security Summary
+    if: github.repository == 'sandialabs/atlas-ui-3'
     runs-on: ubuntu-latest
     needs: [dependency-scan, sast-scan, secrets-scan, container-scan]
     if: always()

@@ -12,6 +12,8 @@ env:
 
 jobs:
   build-and-test:
+    # Skip on forks that lack registry credentials
+    if: github.repository == 'sandialabs/atlas-ui-3' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
