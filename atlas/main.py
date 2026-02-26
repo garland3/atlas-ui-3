@@ -203,7 +203,7 @@ if config.app_settings.feature_globus_auth_enabled:
     app.add_middleware(
         SessionMiddleware,
         secret_key=config.app_settings.globus_session_secret,
-        https_only=False,
+        https_only=not config.app_settings.debug_mode,
         same_site="lax",
     )
 # Domain whitelist check (if enabled) - add before Auth so it runs after
